@@ -1,6 +1,6 @@
 package com.sakura.usercenter.service;
 
-import com.sakura.usercenter.modal.User;
+import com.sakura.usercenter.modal.domain.User;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
