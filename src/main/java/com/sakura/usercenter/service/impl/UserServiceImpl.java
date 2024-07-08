@@ -1,6 +1,8 @@
 package com.sakura.usercenter.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.sakura.usercenter.common.ErrorCode;
+import com.sakura.usercenter.exception.BusinessException;
 import com.sakura.usercenter.modal.domain.User;
 import com.sakura.usercenter.service.UserService;
 import com.sakura.usercenter.mapper.UserMapper;
@@ -31,27 +33,27 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public long userRegister(String userAccount, String userPassword, String checkPassword) {
         // 1.校验
         if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
-            return -1;
+            throw new BusinessException(ErrorCode.NULL_ERROR);
         }
         if (userAccount.length() < 4) {
-            return -1;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号小于四位");
         }
         if (userPassword.length() < 8 || checkPassword.length() < 8) {
-            return -1;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户密码小于八位");
         }
         // 账户不能含特殊字符
         String validPattern = "^[a-zA-Z0-9]+$";
         if (!userAccount.matches(validPattern)) {
-            return -1;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号包含特殊字符");
         }
         // 密码和校验密码相同
         if (!userPassword.equals(checkPassword)) {
-            return -1;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户密码和校验密码不同");
         }
         // 账户不能重复
         Long count = lambdaQuery().eq(User::getUserAccount, userAccount).count();
         if (count > 0) {
-            return -1;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号重复");
         }
 
         // 2.加密
@@ -61,7 +63,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         User user = User.builder().userAccount(userAccount).userPassword(encryptPassword).build();
         boolean saveResult = save(user);
         if (!saveResult) {
-            return -1;
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR);
         }
         return user.getId();
     }
@@ -70,18 +72,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public User userLogin(String userAccount, String userPassword, HttpServletRequest request) {
         // 1.校验
         if (StringUtils.isAnyBlank(userAccount, userPassword)) {
-            return null;
+            throw new BusinessException(ErrorCode.NULL_ERROR);
         }
         if (userAccount.length() < 4) {
-            return null;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号小于四位");
         }
         if (userPassword.length() < 8) {
-            return null;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户密码小于八位");
         }
         // 账户不能含特殊字符
         String validPattern = "^[a-zA-Z0-9]+$";
         if (!userAccount.matches(validPattern)) {
-            return null;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号包含特殊字符");
         }
 
         // 2.加密
@@ -94,7 +96,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 用户不存在
         if (user == null) {
             log.info("user login failed, userAccount cannot match userPassword");
-            return null;
+            throw new BusinessException(40102, "账号或密码错误");
         }
 
         // 3.用户脱敏
@@ -107,6 +109,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public User getSafetyUser(User originUser) {
+        if (originUser == null) {
+            return null;
+        }
         return User.builder()
                 .id(originUser.getId())
                 .userAccount(originUser.getUserAccount())
@@ -119,6 +124,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .userStatus(originUser.getUserStatus())
                 .createTime(originUser.getCreateTime())
                 .build();
+    }
+
+    @Override
+    public Boolean userLogout(HttpServletRequest request) {
+        request.getSession().removeAttribute(USER_LOGIN_STATE);
+        return true;
     }
 }
 
