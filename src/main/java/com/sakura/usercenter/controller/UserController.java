@@ -8,6 +8,7 @@ import com.sakura.usercenter.exception.BusinessException;
 import com.sakura.usercenter.modal.domain.User;
 import com.sakura.usercenter.modal.domain.request.UserLoginRequest;
 import com.sakura.usercenter.modal.domain.request.UserRegisterRequest;
+import com.sakura.usercenter.modal.domain.request.UserUpdateRequest;
 import com.sakura.usercenter.service.UserService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -81,6 +82,33 @@ public class UserController {
         User user = userService.getById(userId);
         User safetyUser = userService.getSafetyUser(user);
         return ResultUtils.success(safetyUser);
+    }
+
+    @PostMapping("/update")
+    public BaseResponse<Boolean> updateUser(@RequestBody UserUpdateRequest user, HttpServletRequest request) {
+        // 1. 校验权限
+        if (!isAdmin(request)) {
+            throw new BusinessException(ErrorCode.NO_AUTH);
+        }
+        // 2. 校验参数
+        if (user == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        Long userId = user.getId();
+        if (userId == null || userId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User user1 = User.builder()
+                .id(userId)
+                .username(user.getUsername())
+                .avatarUrl(user.getAvatarUrl())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .build();
+
+        boolean result = userService.updateById(user1);
+        return result ? ResultUtils.success(true) : ResultUtils.error(ErrorCode.OPERATION_ERROR);
+
     }
 
     @GetMapping("/search")
